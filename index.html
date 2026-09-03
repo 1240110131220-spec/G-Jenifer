@@ -1,0 +1,576 @@
+import http.server
+import socketserver
+import webbrowser
+import os
+
+PORT = 8080
+DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+
+html_content = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Bank India - Vibrant Secure Portal</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --accent-cyan: #06b6d4;
+            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            --glass-bg: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+            --text-main: #ffffff;
+            --text-muted: #cbd5e1;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .bank-container {
+            width: 100%;
+            max-width: 1150px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            box-shadow: var(--glass-shadow);
+            display: grid;
+            grid-template-columns: 270px 1fr;
+            overflow: hidden;
+            min-height: 700px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            background: rgba(0, 0, 0, 0.25);
+            border-right: 1px solid var(--glass-border);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            background: linear-gradient(to right, #06b6d4, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .nav-links li {
+            padding: 14px 18px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .nav-links li.active, .nav-links li:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.4));
+            color: var(--text-main);
+            transform: translateX(6px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-top: 20px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #06b6d4, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+
+        .user-info h4 {
+            font-size: 0.95rem;
+        }
+
+        .user-info p {
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            padding: 35px 45px;
+            overflow-y: auto;
+            max-height: 750px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-dash {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .header-dash h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        /* Glass Cards */
+        .card-balance {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.05));
+            border: 1px solid var(--glass-border);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-balance::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 180px;
+            height: 180px;
+            background: rgba(6, 182, 212, 0.15);
+            border-radius: 50%;
+            filter: blur(40px);
+        }
+
+        .card-balance p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .card-balance h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Grid Controls */
+        .grid-action {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .glass-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            padding: 24px;
+            border-radius: 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .glass-box h3 {
+            font-size: 1.15rem;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+        }
+
+        /* Transaction History */
+        .transaction-list {
+            margin-top: 10px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .transaction-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .transaction-list::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+        }
+
+        .tx-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.9rem;
+        }
+
+        .tx-info strong {
+            display: block;
+            color: #f8fafc;
+        }
+
+        .tx-info span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tx-amount.credit {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .tx-amount.debit {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        @media(max-width: 768px) {
+            .bank-container { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bank-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div>
+                <div class="logo">⚡ AURA BANK</div>
+                <ul class="nav-links">
+                    <li class="active" onclick="switchTab('dashboard', this)">Dashboard</li>
+                    <li onclick="switchTab('deposit', this)">Add Money (UPI)</li>
+                    <li onclick="switchTab('transfer', this)">Fund Transfer</li>
+                    <li onclick="switchTab('loans', this)">Instant Loan</li>
+                    <li onclick="switchTab('history', this)">Transactions</li>
+                </ul>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">JG</div>
+                <div class="user-info">
+                    <h4>Jenifer Gonsalvez</h4>
+                    <p>UPI: aura@oksbi</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="section active">
+                <div class="header-dash">
+                    <h2>Account Overview</h2>
+                    <p id="current-date" style="color: var(--accent-cyan); font-size: 0.9rem; font-weight: 500;"></p>
+                </div>
+
+                <div class="card-balance">
+                    <p>Available Balance</p>
+                    <h1 id="account-balance">₹1,45,800.50</h1>
+                </div>
+
+                <div class="grid-action">
+                    <div class="glass-box">
+                        <h3>Quick Transfer</h3>
+                        <div class="form-group">
+                            <label>UPI ID / Account Number</label>
+                            <input type="text" id="quick-recipient" class="form-control" placeholder="e.g. merchant@paytm">
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="quick-amount" class="form-control" placeholder="0.00">
+                        </div>
+                        <button class="btn" onclick="handleTransfer()">Send Money</button>
+                    </div>
+
+                    <div class="glass-box">
+                        <h3>Recent Transactions</h3>
+                        <div class="transaction-list" id="recent-tx-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deposit Tab -->
+            <div id="deposit" class="section">
+                <div class="header-dash">
+                    <h2>Add Funds via UPI / NetBanking</h2>
+                </div>
+                <div class="glass-box" style="max-width: 500px; margin: 0 auto;">
+                    <div class="form-group">
+                        <label>Select Payment Mode</label>
+                        <select class="form-control">
+                            <option>Google Pay / PhonePe UPI</option>
+                            <option>HDFC / SBI NetBanking</option>
+                            <option>Credit / Debit Card</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount to Add (₹)</label>
+                        <input type="number" id="deposit-amount" class="form-control" placeholder="Enter amount">
+                    </div>
+                    <div class="form-group">
+                        <label>UPI PIN / Password Simulation</label>
+                        <input type="password" maxlength="6" class="form-control" placeholder="••••">
+                    </div>
+                    <button class="btn btn-accent" onclick="handleDeposit()">Deposit Money Instantly</button>
+                </div>
+            </div>
+
+            <!-- Transfer Tab -->
+            <div id="transfer" class="section">
+                <div class="header-dash">
+                    <h2>NEFT / IMPS / UPI Transfer</h2>
+                </div>
+                <div class="glass-box" style="max-width: 500px; margin: 0 auto;">
+                    <div class="form-group">
+                        <label>Beneficiary Name</label>
+                        <input type="text" id="full-name" class="form-control" placeholder="Enter full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Number / UPI</label>
+                        <input type="text" id="full-recipient" class="form-control" placeholder="Enter account or UPI handle">
+                    </div>
+                    <div class="form-group">
+                        <label>Transfer Amount (₹)</label>
+                        <input type="number" id="full-amount" class="form-control" placeholder="0.00">
+                    </div>
+                    <button class="btn" onclick="handleFullTransfer()">Transfer Securely</button>
+                </div>
+            </div>
+
+            <!-- Loans Tab -->
+            <div id="loans" class="section">
+                <div class="header-dash">
+                    <h2>Instant Personal Loan</h2>
+                </div>
+                <div class="glass-box" style="max-width: 500px; margin: 0 auto;">
+                    <div class="form-group">
+                        <label>Loan Type</label>
+                        <select class="form-control">
+                            <option>Instant Personal Loan (10.5% p.a.)</option>
+                            <option>Consumer Durable Loan (No Cost)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Required Loan Amount (₹)</label>
+                        <input type="number" id="loan-amount" class="form-control" placeholder="e.g. 50000">
+                    </div>
+                    <div class="form-group">
+                        <label>Tenure (Months)</label>
+                        <select class="form-control" id="loan-tenure">
+                            <option value="12">12 Months</option>
+                            <option value="24">24 Months</option>
+                            <option value="36">36 Months</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-accent" onclick="handleLoanApply()">Apply & Disburse Instantly</button>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history" class="section">
+                <div class="header-dash">
+                    <h2>Complete Transaction Ledger</h2>
+                </div>
+                <div class="glass-box">
+                    <div class="transaction-list" id="full-tx-list" style="max-height: 420px;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let balance = 145800.50;
+        let transactions = [
+            { title: "Zomato India Order", date: "Sep 01, 2026", amount: -450.00, type: "debit" },
+            { title: "Salary Credited - TechCorp", date: "Aug 31, 2026", amount: 95000.00, type: "credit" },
+            { title: "Amazon India Shopping", date: "Aug 28, 2026", amount: -2499.00, type: "debit" },
+            { title: "UPI Transfer from Rahul", date: "Aug 25, 2026", amount: 1500.00, type: "credit" }
+        ];
+
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            if(element) element.classList.add('active');
+            renderTransactions();
+        }
+
+        function updateUI() {
+            document.getElementById('account-balance').innerText = `₹${balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+            renderTransactions();
+        }
+
+        function renderTransactions() {
+            const recentList = document.getElementById('recent-tx-list');
+            const fullList = document.getElementById('full-tx-list');
+            
+            let htmlContent = '';
+            transactions.forEach(tx => {
+                const sign = tx.type === 'credit' ? '+' : '-';
+                htmlContent += `
+                    <div class="tx-item">
+                        <div class="tx-info">
+                            <strong>${tx.title}</strong>
+                            <span>${tx.date}</span>
+                        </div>
+                        <div class="tx-amount ${tx.type}">${sign}₹${Math.abs(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                `;
+            });
+
+            if(recentList) recentList.innerHTML = htmlContent;
+            if(fullList) fullList.innerHTML = htmlContent;
+        }
+
+        function handleTransfer() {
+            const recipient = document.getElementById('quick-recipient').value;
+            const amountInput = document.getElementById('quick-amount');
+            const amount = parseFloat(amountInput.value);
+
+            if (!recipient || isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid recipient and amount.");
+                return;
+            }
+
+            if (amount > balance) {
+                alert("Insufficient balance in your account!");
+                return;
+            }
+
+            balance -= amount;
+            transactions.unshift({
+                title: `Paid to ${recipient}`,
+                date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                amount: -amount,
+                type: 'debit'
+            });
+
+            amountInput.value = '';
+            document.getElementById('quick-recipient').value = '';
+            updateUI();
+            alert("Transfer Successful!");
+        }
+
+        function handleDeposit() {
+            const amountInput = document.getElementById('deposit-amount');
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid amount to deposit.");
+                return;
+            }
+
+            balance += amount;
+            transactions.unshift({
